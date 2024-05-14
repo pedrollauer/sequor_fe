@@ -23,7 +23,50 @@ namespace sequor_fe
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new Form1());
         }
-        public static async Task<string> PostJsonAsync(string url, string json, ToolStripStatusLabel statusStrip)
+    
+        // This method resets every single control that belongs to a form.
+        // It is called if the POST request is successful
+        public static void ResetForm(Control.ControlCollection controls)
+        {
+            foreach (Control control in controls)
+            {
+                if (control is TextBox)
+                {
+                    ((TextBox)control).Text = string.Empty;
+                }
+                else if (control is ComboBox)
+                {
+                    ((ComboBox)control).SelectedIndex= -1;
+                }
+                else if (control is CheckBox)
+                {
+                    ((CheckBox)control).Checked = false;
+                }
+                else if (control is RadioButton)
+                {
+                    ((RadioButton)control).Checked = false;
+                }
+                else if (control is DateTimePicker)
+                {
+                    ((DateTimePicker)control).Value = DateTime.Today;
+                }
+                else if (control is NumericUpDown)
+                {
+                    ((NumericUpDown)control).Value = 0;
+                }
+                else if (control is PictureBox)
+                {
+                    ((PictureBox)control).Image = null;
+                }
+                else if (control is Panel || control is GroupBox || control is TabControl)
+                {
+                    ResetForm(control.Controls);
+                }
+            }
+        }
+
+        //This method performs a POST request on the server
+        public static async Task<string> PostJsonAsync(string url, string json, ToolStripStatusLabel statusStrip, Control.ControlCollection controls)
         {
             try
             {
@@ -38,6 +81,11 @@ namespace sequor_fe
 
                     string description = responseData["description"].ToString();
                     statusStrip.Text = description;
+                    if (responseData["type"].ToString() == "S")
+                    {
+                        ResetForm(controls);
+                    }
+
                     return await response.Content.ReadAsStringAsync();
 
                 }
@@ -49,11 +97,12 @@ namespace sequor_fe
             }
             catch (Exception ex)
             {
+                statusStrip.Text = "Houve um erro de comunicação com o servidor.";
                 return $"Exception: {ex.Message}";
             }
         }
 
-        public static async Task PerformGetRequest(ComboBox cbOrder, ToolStripStatusLabel toolStripStatusLabel)
+        public static async Task PerformGetRequest(ComboBox cbOrder, ToolStripStatusLabel toolStripStatusLabel, PictureBox pbProduct)
         {
             try
             {
@@ -72,8 +121,8 @@ namespace sequor_fe
 
                         // Clear the ComboBox before adding new items
                         cbOrder.Items.Clear();
-                        toolStripStatusLabel.Text = "Pronto";
 
+                        toolStripStatusLabel.Text = "Pronto";
                         // Loop through each order in the array and add the order number to the ComboBox
                         foreach (JObject order in ordersArray)
                         {
@@ -85,12 +134,14 @@ namespace sequor_fe
                     }
                     else
                     {
+                    toolStripStatusLabel.Text = $"Não foi possível recuperar os dados, erro: {response.StatusCode}";
                         MessageBox.Show($"Failed to retrieve data. Status code: {response.StatusCode}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                
             }
             catch (Exception ex)
             {
+                toolStripStatusLabel.Text = $"Não foi possível acessar o servidor. Verifique a conexão e tente novamente.";
                 MessageBox.Show($"An error occurred: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
